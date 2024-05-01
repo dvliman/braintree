@@ -22,3 +22,10 @@ via stdin pipe
 cat resources/sample-input.txt | clj -M -m braintree.main
 ```
 
+**Code Walkthrough**
+
+Starts with the main entrypoint `braintree/-main`. We read input from either filepath or piped stdin. Then we process input line by line, one at a time. For each line/command, store and updates `[{<name> {card: <card>, balance: <balance>, ...}}, ....]`. Finally, print out the summary.
+
+The test cases `braintree/main-test` exercises the flows with reasonable input assumptions documented.
+
+Happy to walkthrough the code! 
