@@ -1,6 +1,8 @@
 (ns processor.main
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]))
+  (:require
+   [blancohugo.luhn :as luhn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]))
 
 (defn read-input [args]
   (cond
@@ -12,7 +14,7 @@
 
 ;; TODO: use money lib to handle currency, decimals, major, minor, etc
 (defn money [x]
-  (-> x (str/split #"\$") second Integer/parseInt))
+  (some-> x (str/split #"\$") second Integer/parseInt))
 
 (defn add-account [db account-name attributes]
   (assoc db account-name attributes))
@@ -27,7 +29,7 @@
   (str/join
    ", "
    (for [[k v] (into {:message message} context)]
-     (str (name k) "=" (name v)))))
+     (str (name k) "=" v))))
 
 (defn process [db parts]
   (let [[command account-name amount-or-card-number maybe-limit] parts
@@ -36,27 +38,30 @@
       "Add"
       (add-account db account-name
                    {:account-name account-name
-                    :card-number card-number
-                    :limit maybe-limit
+                    :card-number (if (luhn/valid? card-number) card-number "error")
+                    :limit (money maybe-limit)
                     :balance 0})
 
       "Charge"
-      (when-let [{:keys [balance limit]} (lookup-account db account-name)]
-        (if (> (+ balance amount) limit)
-          (log "charging over limit, ignoring"
-               {:account-name account-name
-                :balance balance
-                :amount amount
-                :limit limit
-                :limit-after (+ balance amount)})
-          (update-account db account-name {:balance (+ balance amount)})))
+      (when-let [{:keys [balance limit card-number]} (lookup-account db account-name)]
+        (when (luhn/valid? card-number)
+          (if (> (+ balance amount) limit)
+            (do
+              (log "charging over limit, ignoring"
+                   {:account-name account-name
+                    :balance balance
+                    :amount amount
+                    :limit limit
+                    :limit-after (+ balance amount)})
+              db)
+            (update-account db account-name {:balance (+ balance amount)}))))
 
       "Credit"
       (when-let [{:keys [balance]} (lookup-account db account-name)]
         (update-account db account-name {:balance (- balance amount)}))
 
       :else
-      (log "don't know to process" {:line (str/join parts " ")}))))
+      (log "don't know to process" {:parts parts}))))
 
 (defn display-summary [db]
   (doseq [[k v] db] ;; TODO sort by name
@@ -69,4 +74,4 @@
    read-input
    (map #(str/split % #" "))
    (reduce process {})
-   display-summary))
+   #_display-summary))
