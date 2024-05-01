@@ -3,7 +3,7 @@
    [blancohugo.luhn :as luhn]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [processor.main :refer :all]))
+   [braintree.main :refer :all]))
 
 (deftest luhn-algorithm-test
   ;; from the example: Tom, Lisa, Quincy
@@ -17,14 +17,14 @@
   (testing "read from input file"
     (let [args '("resources/sample-input.txt")]
       (is (= (read-input args)
-             '("Add Tom 4111111111111111 $1000"
-               "Add Lisa 5454545454545454 $3000"
-               "Add Quincy 1234567890123456 $2000"
-               "Charge Tom $500"
-               "Charge Tom $800"
-               "Charge Lisa $7"
-               "Credit Lisa $100"
-               "Credit Quincy $200")))))
+             ["Add Tom 4111111111111111 $1000"
+              "Add Lisa 5454545454545454 $3000"
+              "Add Quincy 1234567890123456 $2000"
+              "Charge Tom $500"
+              "Charge Tom $800"
+              "Charge Lisa $7"
+              "Credit Lisa $100"
+              "Credit Quincy $200"]))))
 
   (testing "read from stdin"
     (binding [*in* (java.io.StringReader. "Add Tom 4111111111111111 $1000\nAdd Lisa 5454545454545454 $3000")]
@@ -53,8 +53,10 @@
            {"Tom" {:account-name "Tom" :card-number "4111111111111111" :limit 1000 :balance 0}})))
 
   (testing "card number should be validated with luhn 10"
-    (is (nil? (as-> (process {} ["Add" "Tom" "1234567890123456" "$1000"]) result
-                (get result "Tom")))))
+    (is (= (as-> (process {} ["Add" "Tom" "1234567890123456" "$1000"]) result
+             (get result "Tom")
+             (:card-number result))
+           "error")))
 
   ;; Charge
   (testing "charge should increase balance by the amount specified"
@@ -109,3 +111,18 @@
              (get result "Tom")
              (:balance result))
            -100))))
+
+(deftest summary-test
+  (testing "print names alphabetically, negative balance, invalid card number"
+    (is (= (summary {"B" {:card-number "4111111111111111" :balance 100}
+                     "A" {:card-number "4111111111111112" :balance 101}
+                     "C" {:card-number "4111111111111113" :balance -1}
+                     "D" {:card-number "error" :balance 0}})
+           ["A: $101" "B: $100" "C: $-1" "D: error"]))))
+
+(deftest sample-problem-test
+  (is (= (->> (read-input '("resources/sample-input.txt"))
+              (map #(str/split % #" "))
+              (reduce process {})
+              summary)
+         ["Lisa: $-93" "Quincy: error" "Tom: $500"])))

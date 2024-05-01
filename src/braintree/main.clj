@@ -12,7 +12,6 @@
     :else
     (line-seq (io/reader *in*))))
 
-;; TODO: use money lib to handle currency, decimals, major, minor, etc
 (defn money [x]
   (some-> x (str/split #"\$") second Integer/parseInt))
 
@@ -44,7 +43,8 @@
 
       "Charge"
       (when-let [{:keys [balance limit card-number]} (lookup-account db account-name)]
-        (when (luhn/valid? card-number)
+        (if-not (luhn/valid? card-number)
+          db
           (if (> (+ balance amount) limit)
             (do
               (log "charging over limit, ignoring"
@@ -57,15 +57,27 @@
             (update-account db account-name {:balance (+ balance amount)}))))
 
       "Credit"
-      (when-let [{:keys [balance]} (lookup-account db account-name)]
-        (update-account db account-name {:balance (- balance amount)}))
+      (when-let [{:keys [balance card-number]} (lookup-account db account-name)]
+        (if-not (luhn/valid? card-number)
+          db
+          (update-account db account-name {:balance (- balance amount)})))
 
       :else
-      (log "don't know to process" {:parts parts}))))
+      (do
+        (log "invalid parts" {:parts parts :reason "don't know how to process"})
+        db))))
 
-(defn display-summary [db]
-  (doseq [[k v] db] ;; TODO sort by name
-    (println (str k ": " "$" v))))
+(defn summary [db]
+  (map
+   (fn [[k {:keys [card-number balance]}]]
+     (if (= card-number "error")
+       (str k ": " card-number)
+       (str k ": " "$" balance)))
+   (into (sorted-map) db)))
+
+(defn display-summary [summary]
+  (doseq [s summary]
+    (println s)))
 
 (defn -main
   [& args]
@@ -74,4 +86,5 @@
    read-input
    (map #(str/split % #" "))
    (reduce process {})
-   #_display-summary))
+   summary
+   display-summary))
