@@ -6,12 +6,14 @@
 
 (defn read-input [args]
   (cond
-    (and (= 1 (count args)) (.canRead (io/file (first args))))
-    (line-seq (io/reader (first args)))
+    (= 1 (count args))
+    (with-open [r (io/reader (io/file (first args)))]
+      (doall (line-seq r)))
 
     :else
     (line-seq (io/reader *in*))))
 
+;; in real world, we'd use money lib to handle currency, decimals, major/minor, etc
 (defn money [x]
   (some-> x (str/split #"\$") second Integer/parseInt))
 
@@ -73,6 +75,7 @@
      (if (= card-number "error")
        (str k ": " card-number)
        (str k ": " "$" balance)))
+   ;; lexicographically based on unicode value, not alphabetical; but you promise no trick :)
    (into (sorted-map) db)))
 
 (defn display-summary [summary]

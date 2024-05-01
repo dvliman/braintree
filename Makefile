@@ -5,3 +5,7 @@ run:
 .PHONY: pipe
 pipe:
 	cat resources/sample-input.txt | clj -M -m braintree.main
+
+.PHONY: test
+test:
+	clj -M:test
