@@ -1,7 +1,7 @@
 {:paths ["src" "test"]
  :deps {org.clojure/clojure {:mvn/version "1.11.3"}
         blancohugo.luhn/blancohugo.luhn {:mvn/version "1.0.0"}}
- :aliases {:main {:main-opts ["-m" "processor.main"]}
+ :aliases {:main {:main-opts ["-m" "braintree.main"]}
            :test {:extra-paths ["test"]
                   :extra-deps {io.github.cognitect-labs/test-runner
                                {:git/tag "v0.5.1" :git/sha "dfb30dd"}}

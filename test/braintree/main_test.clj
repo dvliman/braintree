@@ -1,4 +1,4 @@
-(ns processor.main-test
+(ns braintree.main-test
   (:require
    [blancohugo.luhn :as luhn]
    [clojure.string :as str]

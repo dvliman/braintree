@@ -1,4 +1,4 @@
-(ns processor.main
+(ns braintree.main
   (:require
    [blancohugo.luhn :as luhn]
    [clojure.java.io :as io]
